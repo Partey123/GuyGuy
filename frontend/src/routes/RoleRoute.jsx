@@ -7,3 +7,4 @@ export default function RoleRoute({ allow = [] }) {
   if (allow.length && !allow.includes(user.role)) return <Navigate to="/" replace />;
   return <Outlet />;
 }
+

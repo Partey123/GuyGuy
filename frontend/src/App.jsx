@@ -2,7 +2,7 @@ import { BrowserRouter, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Toaster } from "@/components/ui/sonner";
-import AppRoutes from "@/app-routes/index.jsx";
+import AppRoutes from "@/routes/index.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();

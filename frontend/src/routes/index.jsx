@@ -56,6 +56,7 @@ export default function AppRoutes() {
       <Route path="/verify" element={<OTPVerify />} />
       <Route path="/role" element={<RoleSelect />} />
 
+      {/* Public shareable artisan profile (per Tech Bible) */}
       <Route path="/a/:slug" element={<PublicProfile />} />
 
       {/* Authed routes */}
@@ -95,3 +96,4 @@ export default function AppRoutes() {
     </Routes>
   );
 }
+
