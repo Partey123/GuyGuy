@@ -45,3 +45,24 @@ This starts:
 - `backend` on `http://localhost:8080`
 - `postgres` on `localhost:5432` (for local DB testing)
 
+## Database schema (Supabase)
+
+The schema is defined as SQL migrations under `supabase/migrations/` and mirrors the Tech Bible:
+
+- tables (users, artisan_profiles, bookings, payments, etc.)
+- PostGIS extension + indexes for proximity search
+- `updated_at` trigger function
+- RLS enabled on all tables + policies
+- auth trigger to auto-create `public.users` on signup
+
+### Apply to a hosted Supabase project (quick)
+
+In the Supabase Dashboard:
+
+- Go to **SQL Editor**
+- Run the migrations in filename order from `supabase/migrations/`
+
+### Apply locally (later, via Supabase CLI)
+
+If/when you set up Supabase CLI, you can run the migrations against a local stack.
+
