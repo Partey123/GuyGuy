@@ -6,6 +6,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  console.log("API Request:", config.method?.toUpperCase(), config.url, config.data);
   if (typeof window !== "undefined") {
     const token = window.localStorage.getItem("guyguy.token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
@@ -14,7 +15,10 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("API Response:", response.status, response.config.url, response.data);
+    return response;
+  },
   (error) => {
     let errorMsg = "Unknown error";
     

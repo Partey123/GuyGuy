@@ -27,6 +27,14 @@ export default function Login() {
     const tid = toast.loading("Signing you in…");
     try {
       const response = await login({ email, password });
+      
+      // Check if user's email is verified
+      if (response.user && !response.user.email_verified) {
+        toast.error("Please verify your email before signing in", { id: tid });
+        navigate("/verify-email");
+        return;
+      }
+      
       toast.success("Signed in successfully", { id: tid });
       navigate(response.dashboard_url || "/home");
     } catch (error) {

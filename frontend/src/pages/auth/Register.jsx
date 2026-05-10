@@ -31,10 +31,23 @@ export default function Register() {
     setLoading(true);
     const tid = toast.loading("Creating your account…");
     try {
-      await signup({ full_name: name, email, password, role, phone });
-      toast.success("Account created. Check your email for verification.", { id: tid });
-      navigate("/login");
+      console.log("Attempting signup with:", { full_name: name, email, role, phone });
+      const response = await signup({ full_name: name, email, password, role, phone });
+      console.log("Signup successful:", response);
+      
+      // Check if user needs verification
+      if (response.next_step && response.next_step.includes("verification")) {
+        toast.success("Account created! Please check your email for verification.", { id: tid });
+        console.log("User needs verification, navigating to /verify-email");
+        navigate("/verify-email");
+      } else {
+        // User is already verified or doesn't need verification
+        toast.success("Account created successfully!", { id: tid });
+        console.log("User doesn't need verification, navigating to login");
+        navigate("/login");
+      }
     } catch (error) {
+      console.error("Signup error:", error);
       toast.error(error?.response?.data?.error || error.message || "Registration failed", { id: tid });
     } finally {
       setLoading(false);
