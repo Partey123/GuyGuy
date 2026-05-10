@@ -1,88 +1,150 @@
-import { Link } from "react-router-dom";
-import { Briefcase, Star, Wallet, Users, ArrowRight, Share2 } from "lucide-react";
-import { toast } from "sonner";
-import PageWrapper from "@/components/layout/PageWrapper";
-import AvailabilityToggle from "@/components/artisan/AvailabilityToggle";
-import EarningsChart from "@/components/artisan/EarningsChart";
-import BookingCard from "@/components/booking/BookingCard";
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { authApi } from '@/api/auth';
+import { toast } from 'react-hot-toast';
 
-import Button from "@/components/common/Button";
-import EmptyState from "@/components/common/EmptyState";
-import { useAuth } from "@/hooks/useAuth";
-import { useAuthStore } from "@/store/authStore";
-import { useBooking } from "@/hooks/useBooking";
-import { EARNINGS_SERIES, findArtisan } from "@/lib/mockData";
-import { formatCedi } from "@/lib/formatters";
+const Dashboard = () => {
+  const { user, logout } = useAuth();
+  const [dashboard, setDashboard] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-const Stat = ({ label, value, icon: Icon }) => (
-  <div className="rounded-2xl bg-card border border-border p-4">
-    <div className="flex items-center gap-2 text-muted-foreground text-xs">
-      <Icon className="h-4 w-4" /> {label}
-    </div>
-    <p className="text-2xl font-bold mt-1">{value}</p>
-  </div>
-);
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const response = await authApi.artisanDashboard();
+        setDashboard(response ?? {});
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        toast.error('Failed to load dashboard data');
+        setIsLoading(false);
+      }
+    };
 
-export default function Dashboard() {
-  const { user } = useAuth();
-  const updateProfile = useAuthStore((s) => s.updateProfile);
-  const { bookings } = useBooking();
-  const requests = bookings.filter((b) => b.status === "requested");
-  const active = bookings.filter((b) => ["accepted", "in_progress"].includes(b.status));
-  const artisan = findArtisan(user?.artisanId);
-  const slug = user?.artisanSlug || artisan?.slug || "kwame-asante";
+    fetchDashboardData();
+  }, []);
 
-  const share = () => {
-    navigator.clipboard?.writeText(`https://guyguy.com.gh/a/${slug}`);
-    toast.success("Profile link copied!");
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.error('Failed to logout');
+    }
   };
 
-  const toggleAvail = (next) => {
-    updateProfile({ available: next });
-    toast.success(`You are now ${next ? "available" : "unavailable"}`);
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500"></div>
+      </div>
+    );
+  }
 
   return (
-    <PageWrapper
-      title={`Akwaaba, ${user?.name?.split(" ")[0] || "guy"}`}
-      subtitle="Here's how business is going."
-      action={
-        <div className="flex items-center gap-2 flex-wrap">
-          <AvailabilityToggle value={user?.available ?? true} onChange={toggleAvail} />
-          <Button variant="outline" size="sm" onClick={share} className="active:scale-95 transition-transform">
-            <Share2 className="h-4 w-4" /> Share profile
-          </Button>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-white">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center font-bold text-white text-lg mr-3">
+                GG
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900">Artisan Dashboard</h1>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <button className="text-gray-500 hover:text-gray-700">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118.607 1.023L15.03 9.03l-3.108.526A5.972 5.972 0 009.345 7.018l.622 637L15 17a5 5 0 00-5 5z" />
+                </svg>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
         </div>
-      }
-    >
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="New requests" value={requests.length} icon={Users} />
-        <Stat label="Active jobs" value={active.length} icon={Briefcase} />
-        <Stat label="Rating" value="4.9" icon={Star} />
-        <Stat label="This month" value={formatCedi(5840)} icon={Wallet} />
-      </div>
+      </header>
 
-      <div className="grid lg:grid-cols-3 gap-6 mt-6">
-        <div className="lg:col-span-2">
-          <h2 className="text-lg font-semibold mb-3">Earnings trend</h2>
-          <EarningsChart data={EARNINGS_SERIES} />
-        </div>
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">New requests</h2>
-            <Link to="/artisan/requests" className="text-sm text-primary inline-flex items-center gap-1">
-              All <ArrowRight className="h-4 w-4" />
-            </Link>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* User Profile Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Welcome Back!</h2>
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 bg-gray-300 rounded-full mr-3"></div>
+                <div>
+                  <p className="font-medium text-gray-900">{user?.full_name || 'Artisan'}</p>
+                  <p className="text-sm text-gray-500">{user?.email}</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Member Since</span>
+                  <span className="text-sm font-medium">January 2024</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Dashboard Features</span>
+                  <span className="text-sm font-medium">{dashboard?.features?.length ?? 0}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="space-y-3">
-            {requests.length ? (
-              requests.slice(0, 3).map((b) => <BookingCard key={b.id} booking={b} />)
-            ) : (
-              <EmptyState title="No new requests" description="They'll appear here as soon as a client books you." />
-            )}
+
+          {/* Quick Actions */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <button className="p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                  <div className="w-8 h-8 bg-amber-500 rounded-lg mx-auto mb-2"></div>
+                  <p className="text-sm font-medium text-gray-900">Manage Profile</p>
+                </button>
+                <button className="p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                  <div className="w-8 h-8 bg-amber-500 rounded-lg mx-auto mb-2"></div>
+                  <p className="text-sm font-medium text-gray-900">View Jobs</p>
+                </button>
+                <button className="p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                  <div className="w-8 h-8 bg-amber-500 rounded-lg mx-auto mb-2"></div>
+                  <p className="text-sm font-medium text-gray-900">Portfolio</p>
+                </button>
+                <button className="p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                  <div className="w-8 h-8 bg-amber-500 rounded-lg mx-auto mb-2"></div>
+                  <p className="text-sm font-medium text-gray-900">Earnings</p>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Artisan Dashboard</h2>
+              {dashboard?.features?.length > 0 ? (
+                <div className="grid gap-3">
+                  {dashboard.features.map((feature) => (
+                    <div key={feature} className="rounded-xl border border-gray-200 p-4 bg-slate-50">
+                      <p className="text-sm text-gray-700">{feature}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
+                  <p className="text-gray-500 mb-4">No artisan features available yet.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-    </PageWrapper>
+      </main>
+    </div>
   );
-}
+};
+export default Dashboard;

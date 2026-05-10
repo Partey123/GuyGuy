@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"guyguy/backend/internal/db"
 	"guyguy/backend/internal/models"
 	"guyguy/backend/pkg/response"
+	"guyguy/backend/pkg/supabase"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,17 +15,39 @@ import (
 
 // ReviewHandler handles review endpoints
 type ReviewHandler struct {
-	reviewRepo  *db.ReviewRepo
-	bookingRepo *db.BookingRepo
-	log         *zap.Logger
+	supabaseClient *supabase.Client
+	log            *zap.Logger
 }
 
-func NewReviewHandler(client *db.Client, log *zap.Logger) *ReviewHandler {
+func NewReviewHandler(supabaseClient *supabase.Client, log *zap.Logger) *ReviewHandler {
 	return &ReviewHandler{
-		reviewRepo:  db.NewReviewRepo(client),
-		bookingRepo: db.NewBookingRepo(client),
-		log:         log,
+		supabaseClient: supabaseClient,
+		log:            log,
 	}
+}
+
+func (h *ReviewHandler) getBookingByID(ctx context.Context, id string) (*models.Booking, error) {
+	var bookings []models.Booking
+	_, err := h.supabaseClient.GetSupabaseClient().From("bookings").Select("*", "", false).Eq("id", id).Limit(1, "").ExecuteTo(&bookings)
+	if err != nil {
+		return nil, err
+	}
+	if len(bookings) == 0 {
+		return nil, nil
+	}
+	return &bookings[0], nil
+}
+
+func (h *ReviewHandler) getReviewByBookingID(ctx context.Context, bookingID string) (*models.Review, error) {
+	var reviews []models.Review
+	_, err := h.supabaseClient.GetSupabaseClient().From("reviews").Select("*", "", false).Eq("booking_id", bookingID).Limit(1, "").ExecuteTo(&reviews)
+	if err != nil {
+		return nil, err
+	}
+	if len(reviews) == 0 {
+		return nil, nil
+	}
+	return &reviews[0], nil
 }
 
 // Create creates a new review for a booking
@@ -47,8 +69,7 @@ func (h *ReviewHandler) Create(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	booking, err := h.bookingRepo.GetByID(ctx, req.BookingID)
+	booking, err := h.getBookingByID(context.Background(), req.BookingID)
 	if err != nil {
 		h.log.Error("failed to get booking", zap.Error(err))
 		response.ServerError(c, "failed to fetch booking")
@@ -60,8 +81,7 @@ func (h *ReviewHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Only client can review artisan, and only after booking is completed
-	if booking.ClientID != userID {
+	if booking.ClientID != userID.(string) {
 		response.Forbidden(c, "only client can review this booking")
 		return
 	}
@@ -71,15 +91,14 @@ func (h *ReviewHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Check if review already exists
-	existing, err := h.reviewRepo.GetByBookingID(ctx, req.BookingID)
+	existingReview, err := h.getReviewByBookingID(context.Background(), req.BookingID)
 	if err != nil {
 		h.log.Error("failed to check existing review", zap.Error(err))
 		response.ServerError(c, "failed to create review")
 		return
 	}
 
-	if existing != nil {
+	if existingReview != nil {
 		response.BadRequest(c, "review already exists for this booking")
 		return
 	}
@@ -98,14 +117,14 @@ func (h *ReviewHandler) Create(c *gin.Context) {
 		Comment:   commentPtr,
 	}
 
-	err = h.reviewRepo.Create(ctx, review)
-	if err != nil {
+	var created []models.Review
+	if _, err := h.supabaseClient.GetSupabaseClient().From("reviews").Insert(review, false, "", "representation", "").ExecuteTo(&created); err != nil {
 		h.log.Error("failed to create review", zap.Error(err))
 		response.ServerError(c, "failed to create review")
 		return
 	}
 
-	response.Created(c, review)
+	response.Created(c, created[0])
 }
 
 // ListByArtisan retrieves reviews for an artisan
@@ -121,9 +140,8 @@ func (h *ReviewHandler) ListByArtisan(c *gin.Context) {
 		fmt.Sscanf(o, "%d", &offset)
 	}
 
-	ctx := context.Background()
-	reviews, err := h.reviewRepo.ListByArtisanID(ctx, artisanID, limit, offset)
-	if err != nil {
+	var reviews []models.Review
+	if _, err := h.supabaseClient.GetSupabaseClient().From("reviews").Select("*", "", false).Eq("artisan_id", artisanID).Range(offset, offset+limit-1, "").ExecuteTo(&reviews); err != nil {
 		h.log.Error("failed to list reviews", zap.Error(err))
 		response.ServerError(c, "failed to fetch reviews")
 		return

@@ -3,9 +3,9 @@ package handlers
 import (
 	"context"
 
-	"guyguy/backend/internal/db"
 	"guyguy/backend/internal/models"
 	"guyguy/backend/pkg/response"
+	"guyguy/backend/pkg/supabase"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,17 +14,51 @@ import (
 
 // PaymentHandler handles payment endpoints
 type PaymentHandler struct {
-	paymentRepo *db.PaymentRepo
-	bookingRepo *db.BookingRepo
-	log         *zap.Logger
+	supabaseClient *supabase.Client
+	log            *zap.Logger
 }
 
-func NewPaymentHandler(client *db.Client, log *zap.Logger) *PaymentHandler {
+func NewPaymentHandler(supabaseClient *supabase.Client, log *zap.Logger) *PaymentHandler {
 	return &PaymentHandler{
-		paymentRepo: db.NewPaymentRepo(client),
-		bookingRepo: db.NewBookingRepo(client),
-		log:         log,
+		supabaseClient: supabaseClient,
+		log:            log,
 	}
+}
+
+func (h *PaymentHandler) getBookingByID(ctx context.Context, id string) (*models.Booking, error) {
+	var bookings []models.Booking
+	_, err := h.supabaseClient.GetSupabaseClient().From("bookings").Select("*", "", false).Eq("id", id).Limit(1, "").ExecuteTo(&bookings)
+	if err != nil {
+		return nil, err
+	}
+	if len(bookings) == 0 {
+		return nil, nil
+	}
+	return &bookings[0], nil
+}
+
+func (h *PaymentHandler) getPaymentByReference(ctx context.Context, reference string) (*models.Payment, error) {
+	var payments []models.Payment
+	_, err := h.supabaseClient.GetSupabaseClient().From("payments").Select("*", "", false).Eq("paystack_reference", reference).Limit(1, "").ExecuteTo(&payments)
+	if err != nil {
+		return nil, err
+	}
+	if len(payments) == 0 {
+		return nil, nil
+	}
+	return &payments[0], nil
+}
+
+func (h *PaymentHandler) getPaymentByBookingID(ctx context.Context, bookingID string) (*models.Payment, error) {
+	var payments []models.Payment
+	_, err := h.supabaseClient.GetSupabaseClient().From("payments").Select("*", "", false).Eq("booking_id", bookingID).Limit(1, "").ExecuteTo(&payments)
+	if err != nil {
+		return nil, err
+	}
+	if len(payments) == 0 {
+		return nil, nil
+	}
+	return &payments[0], nil
 }
 
 // InitiatePayment initiates a payment for a booking
@@ -45,20 +79,18 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	booking, err := h.bookingRepo.GetByID(ctx, req.BookingID)
+	booking, err := h.getBookingByID(context.Background(), req.BookingID)
 	if err != nil {
 		h.log.Error("failed to get booking", zap.Error(err))
 		response.ServerError(c, "failed to fetch booking")
 		return
 	}
 
-	if booking == nil || booking.ClientID != userID {
+	if booking == nil || booking.ClientID != userID.(string) {
 		response.NotFound(c, "booking not found")
 		return
 	}
 
-	// Calculate commission (10%) and artisan payout (90%)
 	commissionAmount := req.Amount * 0.10
 	artisanPayoutAmount := req.Amount - commissionAmount
 
@@ -75,21 +107,19 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 		PayoutStatus:          "pending",
 	}
 
-	err = h.paymentRepo.Create(ctx, payment)
-	if err != nil {
+	var created []models.Payment
+	if _, err := h.supabaseClient.GetSupabaseClient().From("payments").Insert(payment, false, "", "representation", "").ExecuteTo(&created); err != nil {
 		h.log.Error("failed to create payment", zap.Error(err))
 		response.ServerError(c, "failed to initiate payment")
 		return
 	}
 
-	// In production, integrate with Paystack to get checkout URL
 	response.Created(c, gin.H{
-		"payment_id":            payment.ID,
-		"amount":                payment.Amount,
-		"commission_amount":     payment.CommissionAmount,
-		"artisan_payout_amount": payment.ArtisanPayoutAmount,
-		"status":                payment.Status,
-		// "checkout_url": "https://checkout.paystack.com/..." (add Paystack integration)
+		"payment_id":            created[0].ID,
+		"amount":                created[0].Amount,
+		"commission_amount":     created[0].CommissionAmount,
+		"artisan_payout_amount": created[0].ArtisanPayoutAmount,
+		"status":                created[0].Status,
 	})
 }
 
@@ -110,31 +140,24 @@ func (h *PaymentHandler) WebhookHandler(c *gin.Context) {
 		return
 	}
 
-	// Only process successful payment events
 	if webhook.Event != "charge.success" || webhook.Data.Status != "success" {
 		response.OK(c, gin.H{"message": "webhook received"})
 		return
 	}
 
-	ctx := context.Background()
-
-	// Check if payment already processed (idempotency - critical for payments)
-	existingPayment, err := h.paymentRepo.GetByReference(ctx, webhook.Data.Reference)
+	existingPayment, err := h.getPaymentByReference(context.Background(), webhook.Data.Reference)
 	if err != nil {
 		h.log.Error("failed to check existing payment", zap.Error(err))
 		response.ServerError(c, "webhook processing failed")
 		return
 	}
 
-	// Already processed - return success to prevent Paystack retries
 	if existingPayment != nil {
 		h.log.Info("webhook already processed", zap.String("reference", webhook.Data.Reference))
 		response.OK(c, gin.H{"message": "webhook processed"})
 		return
 	}
 
-	// Update payment with Paystack reference and mark as completed
-	// In production, fetch payment by ID and update status
 	h.log.Info("payment webhook processed",
 		zap.String("reference", webhook.Data.Reference),
 		zap.Int("amount", webhook.Data.Amount))
@@ -146,8 +169,7 @@ func (h *PaymentHandler) WebhookHandler(c *gin.Context) {
 func (h *PaymentHandler) GetPaymentStatus(c *gin.Context) {
 	bookingID := c.Param("booking_id")
 
-	ctx := context.Background()
-	payment, err := h.paymentRepo.GetByBookingID(ctx, bookingID)
+	payment, err := h.getPaymentByBookingID(context.Background(), bookingID)
 	if err != nil {
 		h.log.Error("failed to get payment", zap.Error(err))
 		response.ServerError(c, "failed to fetch payment")

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"guyguy/backend/internal/db"
+	"guyguy/backend/internal/models"
 	"guyguy/backend/pkg/response"
+	"guyguy/backend/pkg/supabase"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -13,14 +14,14 @@ import (
 
 // ArtisanHandler handles artisan endpoints
 type ArtisanHandler struct {
-	artisanRepo *db.ArtisanRepo
-	log         *zap.Logger
+	supabaseClient *supabase.Client
+	log            *zap.Logger
 }
 
-func NewArtisanHandler(client *db.Client, log *zap.Logger) *ArtisanHandler {
+func NewArtisanHandler(supabaseClient *supabase.Client, log *zap.Logger) *ArtisanHandler {
 	return &ArtisanHandler{
-		artisanRepo: db.NewArtisanRepo(client),
-		log:         log,
+		supabaseClient: supabaseClient,
+		log:            log,
 	}
 }
 
@@ -36,19 +37,19 @@ func (h *ArtisanHandler) List(c *gin.Context) {
 		fmt.Sscanf(o, "%d", &offset)
 	}
 
-	filters := make(map[string]interface{})
-	filters["verification_status"] = "approved"
+	query := h.supabaseClient.GetSupabaseClient().From("artisans").Select("*", "", false).Eq("verification_status", "approved")
 
 	if skill := c.Query("skill"); skill != "" {
-		filters["skill_category"] = skill
+		query = query.Eq("skill_category", skill)
 	}
 	if avail := c.Query("available"); avail == "true" {
-		filters["is_available"] = true
+		query = query.Eq("is_available", "true")
 	}
 
-	ctx := context.Background()
-	artisans, err := h.artisanRepo.List(ctx, filters, limit, offset)
-	if err != nil {
+	query = query.Range(offset, offset+limit-1, "")
+
+	var artisans []models.ArtisanProfile
+	if _, err := query.ExecuteTo(&artisans); err != nil {
 		h.log.Error("failed to list artisans", zap.Error(err))
 		response.ServerError(c, "failed to fetch artisans")
 		return
@@ -62,12 +63,35 @@ func (h *ArtisanHandler) List(c *gin.Context) {
 	})
 }
 
+func (h *ArtisanHandler) getArtisanByID(ctx context.Context, id string) (*models.ArtisanProfile, error) {
+	var artisans []models.ArtisanProfile
+	_, err := h.supabaseClient.GetSupabaseClient().From("artisans").Select("*", "", false).Eq("id", id).Limit(1, "").ExecuteTo(&artisans)
+	if err != nil {
+		return nil, err
+	}
+	if len(artisans) == 0 {
+		return nil, nil
+	}
+	return &artisans[0], nil
+}
+
+func (h *ArtisanHandler) getArtisanByUserID(ctx context.Context, userID string) (*models.ArtisanProfile, error) {
+	var artisans []models.ArtisanProfile
+	_, err := h.supabaseClient.GetSupabaseClient().From("artisans").Select("*", "", false).Eq("user_id", userID).Limit(1, "").ExecuteTo(&artisans)
+	if err != nil {
+		return nil, err
+	}
+	if len(artisans) == 0 {
+		return nil, nil
+	}
+	return &artisans[0], nil
+}
+
 // GetByID retrieves a public artisan profile
 func (h *ArtisanHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
 
-	ctx := context.Background()
-	artisan, err := h.artisanRepo.GetByID(ctx, id)
+	artisan, err := h.getArtisanByID(context.Background(), id)
 	if err != nil {
 		h.log.Error("failed to get artisan", zap.Error(err))
 		response.ServerError(c, "failed to fetch artisan")
@@ -105,8 +129,7 @@ func (h *ArtisanHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	artisan, err := h.artisanRepo.GetByUserID(ctx, userID.(string))
+	artisan, err := h.getArtisanByUserID(context.Background(), userID.(string))
 	if err != nil {
 		h.log.Error("failed to get artisan profile", zap.Error(err))
 		response.ServerError(c, "failed to fetch profile")
@@ -141,8 +164,12 @@ func (h *ArtisanHandler) UpdateProfile(c *gin.Context) {
 		updates["is_available"] = *req.IsAvailable
 	}
 
-	err = h.artisanRepo.Update(ctx, artisan.ID, updates)
-	if err != nil {
+	if len(updates) == 0 {
+		response.BadRequest(c, "no updates provided")
+		return
+	}
+
+	if _, err := h.supabaseClient.GetSupabaseClient().From("artisans").Update(updates, "representation", "").Eq("id", artisan.ID).ExecuteTo(&[]models.ArtisanProfile{}); err != nil {
 		h.log.Error("failed to update artisan", zap.Error(err))
 		response.ServerError(c, "failed to update profile")
 		return

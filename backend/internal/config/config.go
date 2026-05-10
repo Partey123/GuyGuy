@@ -14,8 +14,7 @@ type Config struct {
 	SupabaseURL            string
 	SupabaseServiceRoleKey string
 	SupabaseJWTSecret      string
-
-	DatabaseURL string
+	DatabaseURL            string
 
 	PaystackSecretKey     string
 	PaystackWebhookSecret string
@@ -49,11 +48,7 @@ func Load() Config {
 		SupabaseURL:            os.Getenv("SUPABASE_URL"),
 		SupabaseServiceRoleKey: os.Getenv("SUPABASE_SERVICE_ROLE_KEY"),
 		SupabaseJWTSecret:      os.Getenv("SUPABASE_JWT_SECRET"),
-
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-
-		PaystackSecretKey:     os.Getenv("PAYSTACK_SECRET_KEY"),
-		PaystackWebhookSecret: os.Getenv("PAYSTACK_WEBHOOK_SECRET"),
+		DatabaseURL:            os.Getenv("DATABASE_URL"),
 
 		ResendAPIKey:    os.Getenv("RESEND_API_KEY"),
 		ResendFromEmail: os.Getenv("RESEND_FROM_EMAIL"),

@@ -1,9 +1,10 @@
 import api from "@/lib/axios";
 
 export const chatApi = {
-  list: () => api.get("/chat"),
-  get: (id) => api.get(`/chat/${id}`),
-  create: (data) => api.post("/chat", data),
-  update: (id, data) => api.patch(`/chat/${id}`, data),
-  remove: (id) => api.delete(`/chat/${id}`),
+  listMessages: (bookingId, params) =>
+    api.get(`/chat/bookings/${bookingId}/messages`, { params }),
+  sendMessage: (bookingId, data) =>
+    api.post(`/chat/bookings/${bookingId}/messages`, data),
+  markAsRead: (messageId) =>
+    api.put(`/chat/messages/${messageId}/read`),
 };

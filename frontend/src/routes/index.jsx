@@ -12,8 +12,10 @@ import Privacy from "@/pages/marketing/Privacy";
 
 import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
-import OTPVerify from "@/pages/auth/OTPVerify";
 import RoleSelect from "@/pages/auth/RoleSelect";
+import EmailVerify from "@/pages/auth/EmailVerify";
+import ClientDashboard from "@/pages/client/Dashboard";
+import ArtisanDashboard from "@/pages/artisan/Dashboard";
 
 import ClientHome from "@/pages/client/Home";
 import Search from "@/pages/client/Search";
@@ -22,8 +24,6 @@ import BookingRequest from "@/pages/client/BookingRequest";
 import MyBookings from "@/pages/client/MyBookings";
 import BookingDetail from "@/pages/client/BookingDetail";
 import ClientProfile from "@/pages/client/ClientProfile";
-
-import Dashboard from "@/pages/artisan/Dashboard";
 import Requests from "@/pages/artisan/Requests";
 import ActiveJobs from "@/pages/artisan/ActiveJobs";
 import Earnings from "@/pages/artisan/Earnings";
@@ -53,7 +53,7 @@ export default function AppRoutes() {
 
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/verify" element={<OTPVerify />} />
+      <Route path="/verify-email" element={<EmailVerify />} />
       <Route path="/role" element={<RoleSelect />} />
 
       {/* Public shareable artisan profile (per Tech Bible) */}
@@ -70,16 +70,21 @@ export default function AppRoutes() {
         <Route path="/me" element={<ClientProfile />} />
       </Route>
 
-      {/* Artisan-only */}
-      <Route element={<RoleRoute allow={["artisan"]} />}>
-        <Route path="/artisan" element={<Dashboard />} />
-        <Route path="/artisan/requests" element={<Requests />} />
-        <Route path="/artisan/jobs" element={<ActiveJobs />} />
-        <Route path="/artisan/earnings" element={<Earnings />} />
-        <Route path="/artisan/boost" element={<Boost />} />
-        <Route path="/artisan/profile/edit" element={<EditProfile />} />
-        <Route path="/artisan/portfolio" element={<Portfolio />} />
+      {/* Client-only routes */}
+      <Route element={<RoleRoute allow={["client"]} />}>
+        <Route path="/client/dashboard" element={<ClientDashboard />} />
       </Route>
+
+     {/* Artisan-only routes */}
+  <Route element={<RoleRoute allow={["artisan"]} />}>
+  <Route path="/artisan" element={<ArtisanDashboard />} />  {/* ← fixed */}
+  <Route path="/artisan/requests" element={<Requests />} />
+  <Route path="/artisan/jobs" element={<ActiveJobs />} />
+  <Route path="/artisan/earnings" element={<Earnings />} />
+  <Route path="/artisan/boost" element={<Boost />} />
+  <Route path="/artisan/profile/edit" element={<EditProfile />} />
+  <Route path="/artisan/portfolio" element={<Portfolio />} />
+</Route>
 
       {/* Admin-only */}
       <Route element={<RoleRoute allow={["admin"]} />}>

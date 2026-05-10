@@ -11,7 +11,6 @@ export default function ChatWindow({ bookingId, bookingStatus }) {
   const { user } = useAuth();
   const ref = useRef(null);
   const [lastSentId, setLastSentId] = useState(null);
-  const myRole = user?.role === "artisan" ? "artisan" : "client";
   const locked = bookingStatus && !["accepted", "in_progress", "completed_by_artisan", "completed"].includes(bookingStatus);
 
   useEffect(() => {
@@ -24,9 +23,9 @@ export default function ChatWindow({ bookingId, bookingStatus }) {
     return () => clearTimeout(t);
   }, [lastSentId]);
 
-  const handleSend = (t) => {
+  const handleSend = async (t) => {
     const id = "m" + Date.now();
-    send(t, myRole);
+    await send(t);
     setLastSentId(id);
   };
 
@@ -44,7 +43,7 @@ export default function ChatWindow({ bookingId, bookingStatus }) {
             <MessageBubble
               key={m.id}
               message={m}
-              mine={m.from === myRole}
+              mine={m.senderId === user?.id}
               justSent={i === messages.length - 1 && lastSentId !== null}
             />
           ))

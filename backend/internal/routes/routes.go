@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 
 	"guyguy/backend/internal/config"
-	"guyguy/backend/internal/db"
 	"guyguy/backend/internal/handlers"
 	"guyguy/backend/internal/middleware"
 	"guyguy/backend/pkg/supabase"
@@ -29,31 +28,13 @@ func NewRouter(cfg config.Config, log *zap.Logger) *gin.Engine {
 		log.Fatal("failed to initialize supabase client", zap.Error(err))
 	}
 
-	// Initialize database client
-	dbClient, err := db.New(cfg, log)
-	if err != nil {
-		log.Fatal("failed to initialize database", zap.Error(err))
-	}
-	defer func() {
-		if err := dbClient.Close(); err != nil {
-			log.Error("failed to close database connection", zap.Error(err))
-		}
-	}()
-
-	// Run migrations in development
-	if cfg.AppEnv == "development" {
-		if err := dbClient.Migrate(); err != nil {
-			log.Fatal("failed to run migrations", zap.Error(err))
-		}
-	}
-
-	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(dbClient, supabaseClient, log)
-	artisanHandler := handlers.NewArtisanHandler(dbClient, log)
-	bookingHandler := handlers.NewBookingHandler(dbClient, log)
-	paymentHandler := handlers.NewPaymentHandler(dbClient, log)
-	chatHandler := handlers.NewChatHandler(dbClient, log)
-	reviewHandler := handlers.NewReviewHandler(dbClient, log)
+	// Initialize handlers using Supabase directly for auth and persistence
+	authHandler := handlers.NewAuthHandler(supabaseClient, log)
+	artisanHandler := handlers.NewArtisanHandler(supabaseClient, log)
+	bookingHandler := handlers.NewBookingHandler(supabaseClient, log)
+	paymentHandler := handlers.NewPaymentHandler(supabaseClient, log)
+	chatHandler := handlers.NewChatHandler(supabaseClient, log)
+	reviewHandler := handlers.NewReviewHandler(supabaseClient, log)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

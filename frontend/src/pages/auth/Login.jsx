@@ -4,29 +4,36 @@ import { toast } from "sonner";
 import AuthLayout from "@/components/layout/AuthLayout";
 import Input from "@/components/common/Input";
 import Button from "@/components/common/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Login() {
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const next = {};
-    if (!identifier.trim()) next.identifier = "Enter your name or email";
+    if (!email.trim()) next.email = "Enter your email";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Enter a valid email";
     if (password.length < 6) next.password = "Password must be at least 6 characters";
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setLoading(true);
     const tid = toast.loading("Signing you in…");
-    setTimeout(() => {
-      toast.success("Verification code sent", { id: tid });
+    try {
+      const response = await login({ email, password });
+      toast.success("Signed in successfully", { id: tid });
+      navigate(response.dashboard_url || "/home");
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message || "Login failed", { id: tid });
+    } finally {
       setLoading(false);
-      navigate(`/verify?phone=${encodeURIComponent(identifier)}&mode=login`);
-    }, 1000);
+    }
   };
 
   return (
@@ -42,11 +49,12 @@ export default function Login() {
     >
       <form onSubmit={submit} className="space-y-4">
         <Input
-          label="Name or email"
+          label="Email"
+          type="email"
           placeholder="kwame@example.com"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-          error={errors.identifier}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={errors.email}
         />
         <Input
           label="Password"

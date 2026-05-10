@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"guyguy/backend/internal/db"
 	"guyguy/backend/internal/models"
 	"guyguy/backend/pkg/response"
+	"guyguy/backend/pkg/supabase"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -15,17 +15,27 @@ import (
 
 // BookingHandler handles booking endpoints
 type BookingHandler struct {
-	bookingRepo *db.BookingRepo
-	artisanRepo *db.ArtisanRepo
-	log         *zap.Logger
+	supabaseClient *supabase.Client
+	log            *zap.Logger
 }
 
-func NewBookingHandler(client *db.Client, log *zap.Logger) *BookingHandler {
+func NewBookingHandler(supabaseClient *supabase.Client, log *zap.Logger) *BookingHandler {
 	return &BookingHandler{
-		bookingRepo: db.NewBookingRepo(client),
-		artisanRepo: db.NewArtisanRepo(client),
-		log:         log,
+		supabaseClient: supabaseClient,
+		log:            log,
 	}
+}
+
+func (h *BookingHandler) getBookingByID(ctx context.Context, id string) (*models.Booking, error) {
+	var bookings []models.Booking
+	_, err := h.supabaseClient.GetSupabaseClient().From("bookings").Select("*", "", false).Eq("id", id).Limit(1, "").ExecuteTo(&bookings)
+	if err != nil {
+		return nil, err
+	}
+	if len(bookings) == 0 {
+		return nil, nil
+	}
+	return &bookings[0], nil
 }
 
 // Create creates a new booking
@@ -53,7 +63,6 @@ func (h *BookingHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// Parse scheduled date if provided
 	var scheduledDate *time.Time
 	if req.ScheduledDate != "" {
 		if parsedDate, err := time.Parse("2006-01-02", req.ScheduledDate); err == nil {
@@ -76,15 +85,19 @@ func (h *BookingHandler) Create(c *gin.Context) {
 		Status:          "pending",
 	}
 
-	ctx := context.Background()
-	err := h.bookingRepo.Create(ctx, booking)
-	if err != nil {
+	var created []models.Booking
+	if _, err := h.supabaseClient.GetSupabaseClient().From("bookings").Insert(booking, false, "", "representation", "").ExecuteTo(&created); err != nil {
 		h.log.Error("failed to create booking", zap.Error(err))
 		response.ServerError(c, "failed to create booking")
 		return
 	}
 
-	response.Created(c, booking)
+	if len(created) == 0 {
+		response.ServerError(c, "failed to create booking")
+		return
+	}
+
+	response.Created(c, created[0])
 }
 
 // GetByID retrieves a booking
@@ -96,8 +109,7 @@ func (h *BookingHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	booking, err := h.bookingRepo.GetByID(ctx, id)
+	booking, err := h.getBookingByID(context.Background(), id)
 	if err != nil {
 		h.log.Error("failed to get booking", zap.Error(err))
 		response.ServerError(c, "failed to fetch booking")
@@ -109,7 +121,6 @@ func (h *BookingHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	// Check authorization - only client and artisan can view
 	if booking.ClientID != userID.(string) && booking.ArtisanID != userID.(string) {
 		response.Forbidden(c, "you cannot access this booking")
 		return
@@ -128,52 +139,36 @@ func (h *BookingHandler) ListByStatus(c *gin.Context) {
 
 	status := c.DefaultQuery("status", "pending")
 	limit := 10
-	offset := 0
 
 	if l := c.Query("limit"); l != "" {
 		fmt.Sscanf(l, "%d", &limit)
 	}
-	if o := c.Query("offset"); o != "" {
-		fmt.Sscanf(o, "%d", &offset)
-	}
 
-	ctx := context.Background()
-	// Get user's role to determine which bookings to fetch
 	userRole, _ := c.Get("role")
 
-	var bookings []*models.Booking
-	var err error
-
-	// If user is an artisan, get their bookings; if client, get their bookings
+	var bookings []models.Booking
+	query := h.supabaseClient.GetSupabaseClient().From("bookings").Select("*", "", false).Limit(limit, "")
 	if userRole == "artisan" {
-		bookings, err = h.bookingRepo.ListByArtisanID(ctx, userID.(string), limit, offset)
+		query = query.Eq("artisan_id", userID.(string))
 	} else {
-		// Default to client bookings
-		bookings, err = h.bookingRepo.ListByClientID(ctx, userID.(string), limit, offset)
+		query = query.Eq("client_id", userID.(string))
 	}
 
-	if err != nil {
+	if status != "all" {
+		query = query.Eq("status", status)
+	}
+
+	if _, err := query.ExecuteTo(&bookings); err != nil {
 		h.log.Error("failed to list bookings", zap.Error(err))
 		response.ServerError(c, "failed to fetch bookings")
 		return
-	}
-
-	// Filter by status if specified
-	if status != "all" {
-		var filteredBookings []*models.Booking
-		for _, booking := range bookings {
-			if booking.Status == status {
-				filteredBookings = append(filteredBookings, booking)
-			}
-		}
-		bookings = filteredBookings
 	}
 
 	response.OK(c, gin.H{
 		"data":   bookings,
 		"count":  len(bookings),
 		"limit":  limit,
-		"offset": offset,
+		"offset": 0,
 	})
 }
 
@@ -196,8 +191,7 @@ func (h *BookingHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	booking, err := h.bookingRepo.GetByID(ctx, id)
+	booking, err := h.getBookingByID(context.Background(), id)
 	if err != nil {
 		h.log.Error("failed to get booking", zap.Error(err))
 		response.ServerError(c, "failed to fetch booking")
@@ -209,16 +203,14 @@ func (h *BookingHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	// Check authorization - only artisan can accept/decline
-	if req.Status != "pending" && booking.ArtisanID != userID {
+	if req.Status != "pending" && booking.ArtisanID != userID.(string) {
 		response.Forbidden(c, "only artisan can update booking status")
 		return
 	}
 
-	err = h.bookingRepo.Update(ctx, id, map[string]interface{}{
+	if _, err := h.supabaseClient.GetSupabaseClient().From("bookings").Update(map[string]interface{}{
 		"status": req.Status,
-	})
-	if err != nil {
+	}, "representation", "").Eq("id", id).ExecuteTo(&[]models.Booking{}); err != nil {
 		h.log.Error("failed to update booking", zap.Error(err))
 		response.ServerError(c, "failed to update booking")
 		return

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"guyguy/backend/internal/db"
 	"guyguy/backend/internal/models"
 	"guyguy/backend/pkg/response"
+	"guyguy/backend/pkg/supabase"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -15,17 +15,27 @@ import (
 
 // ChatHandler handles chat endpoints
 type ChatHandler struct {
-	messageRepo *db.MessageRepo
-	bookingRepo *db.BookingRepo
-	log         *zap.Logger
+	supabaseClient *supabase.Client
+	log            *zap.Logger
 }
 
-func NewChatHandler(client *db.Client, log *zap.Logger) *ChatHandler {
+func NewChatHandler(supabaseClient *supabase.Client, log *zap.Logger) *ChatHandler {
 	return &ChatHandler{
-		messageRepo: db.NewMessageRepo(client),
-		bookingRepo: db.NewBookingRepo(client),
-		log:         log,
+		supabaseClient: supabaseClient,
+		log:            log,
 	}
+}
+
+func (h *ChatHandler) getBookingByID(ctx context.Context, id string) (*models.Booking, error) {
+	var bookings []models.Booking
+	_, err := h.supabaseClient.GetSupabaseClient().From("bookings").Select("*", "", false).Eq("id", id).Limit(1, "").ExecuteTo(&bookings)
+	if err != nil {
+		return nil, err
+	}
+	if len(bookings) == 0 {
+		return nil, nil
+	}
+	return &bookings[0], nil
 }
 
 // GetMessages retrieves chat history for a booking
@@ -38,17 +48,12 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 
 	bookingID := c.Param("booking_id")
 	limit := 50
-	offset := 0
 
 	if l := c.Query("limit"); l != "" {
 		fmt.Sscanf(l, "%d", &limit)
 	}
-	if o := c.Query("offset"); o != "" {
-		fmt.Sscanf(o, "%d", &offset)
-	}
 
-	ctx := context.Background()
-	booking, err := h.bookingRepo.GetByID(ctx, bookingID)
+	booking, err := h.getBookingByID(context.Background(), bookingID)
 	if err != nil {
 		h.log.Error("failed to get booking", zap.Error(err))
 		response.ServerError(c, "failed to fetch booking")
@@ -60,14 +65,13 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 		return
 	}
 
-	// Check authorization - only client and artisan can access chat
-	if booking.ClientID != userID && booking.ArtisanID != userID {
+	if booking.ClientID != userID.(string) && booking.ArtisanID != userID.(string) {
 		response.Forbidden(c, "you cannot access this chat")
 		return
 	}
 
-	messages, err := h.messageRepo.ListByBookingID(ctx, bookingID, limit, offset)
-	if err != nil {
+	var messages []models.Message
+	if _, err := h.supabaseClient.GetSupabaseClient().From("messages").Select("*", "", false).Eq("booking_id", bookingID).Limit(limit, "").ExecuteTo(&messages); err != nil {
 		h.log.Error("failed to list messages", zap.Error(err))
 		response.ServerError(c, "failed to fetch messages")
 		return
@@ -77,7 +81,7 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 		"data":   messages,
 		"count":  len(messages),
 		"limit":  limit,
-		"offset": offset,
+		"offset": 0,
 	})
 }
 
@@ -100,8 +104,7 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	ctx := context.Background()
-	booking, err := h.bookingRepo.GetByID(ctx, bookingID)
+	booking, err := h.getBookingByID(context.Background(), bookingID)
 	if err != nil {
 		h.log.Error("failed to get booking", zap.Error(err))
 		response.ServerError(c, "failed to fetch booking")
@@ -113,8 +116,7 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		return
 	}
 
-	// Check authorization - only client and artisan can send messages
-	if booking.ClientID != userID && booking.ArtisanID != userID {
+	if booking.ClientID != userID.(string) && booking.ArtisanID != userID.(string) {
 		response.Forbidden(c, "you cannot send messages in this chat")
 		return
 	}
@@ -127,23 +129,21 @@ func (h *ChatHandler) SendMessage(c *gin.Context) {
 		IsRead:    false,
 	}
 
-	err = h.messageRepo.Create(ctx, message)
-	if err != nil {
+	var created []models.Message
+	if _, err := h.supabaseClient.GetSupabaseClient().From("messages").Insert(message, false, "", "representation", "").ExecuteTo(&created); err != nil {
 		h.log.Error("failed to create message", zap.Error(err))
 		response.ServerError(c, "failed to send message")
 		return
 	}
 
-	response.Created(c, message)
+	response.Created(c, created[0])
 }
 
 // MarkAsRead marks a message as read
 func (h *ChatHandler) MarkAsRead(c *gin.Context) {
 	messageID := c.Param("message_id")
 
-	ctx := context.Background()
-	err := h.messageRepo.MarkAsRead(ctx, messageID)
-	if err != nil {
+	if _, err := h.supabaseClient.GetSupabaseClient().From("messages").Update(map[string]interface{}{"is_read": true}, "representation", "").Eq("id", messageID).ExecuteTo(&[]models.Message{}); err != nil {
 		h.log.Error("failed to mark message as read", zap.Error(err))
 		response.ServerError(c, "failed to mark message as read")
 		return
