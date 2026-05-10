@@ -1,10 +1,3 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App.jsx'
-import './styles/index.css'
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+// Entry shim — TanStack Start owns the real entry. This file exists to satisfy
+// the spec's folder structure (src/main.jsx). Do not import from it directly.
+export {};
