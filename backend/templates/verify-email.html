@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email - GuyGuy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./design-system.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+            line-height: var(--leading-normal);
+            color: var(--blueblack-700);
+            background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-5);
+        }
+        
+        .verification-container {
+            background: var(--background);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-xl);
+            max-width: 480px;
+            width: 100%;
+            overflow: hidden;
+            animation: slideUp var(--duration-normal) var(--ease-out);
+            position: relative;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 50px 40px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23dots)"/></svg>');
+            opacity: 0.4;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+        
+        .tagline {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+        
+        .content {
+            padding: 50px 40px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 32px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        
+        .verification-form {
+            margin-bottom: 30px;
+        }
+        
+        .input-group {
+            margin-bottom: 24px;
+        }
+        
+        .form-label {
+            display: block;
+            font-family: var(--font-sans);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            color: var(--blueblack-700);
+            margin-bottom: var(--space-2);
+        }
+        
+        .otp-input {
+            width: 100%;
+            padding: var(--space-4) var(--space-3);
+            border: 2px solid var(--primary-200);
+            border-radius: var(--radius-lg);
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
+            text-align: center;
+            letter-spacing: 8px;
+            font-family: var(--font-mono);
+            transition: all var(--duration-normal) var(--ease-in-out);
+            background: var(--background);
+        }
+        
+        .otp-input:focus {
+            outline: none;
+            border-color: var(--primary-500);
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.1);
+            background: var(--background);
+        }
+        
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+            color: var(--blueblack-800);
+            padding: var(--space-4) var(--space-6);
+            border: none;
+            border-radius: var(--radius-2xl);
+            font-size: var(--text-base);
+            font-weight: var(--font-medium);
+            cursor: pointer;
+            transition: all var(--duration-normal) var(--ease-in-out);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .alternative-action {
+            text-align: center;
+            margin-top: var(--space-6);
+        }
+        
+        .alternative-link {
+            color: var(--primary-500);
+            text-decoration: none;
+            font-weight: var(--font-medium);
+            font-size: var(--text-sm);
+            transition: color var(--duration-normal) var(--ease-in-out);
+        }
+        
+        .alternative-link:hover {
+            color: var(--primary-600);
+            text-decoration: underline;
+        }
+        
+        .footer {
+            background: #f9fafb;
+            padding: 30px 40px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .help-text {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+        
+        .support-info {
+            font-size: 14px;
+            color: #4a5568;
+        }
+        
+        .timer {
+            font-size: 14px;
+            color: #dc2626;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .timer-icon {
+            width: 16px;
+            height: 16px;
+        }
+        
+        @media (max-width: 600px) {
+            .verification-container {
+                margin: 10px;
+                border-radius: 20px;
+            }
+            
+            .header, .content, .footer {
+                padding: 40px 30px;
+            }
+            
+            .title {
+                font-size: 24px;
+            }
+            
+            .otp-input {
+                font-size: 18px;
+                letter-spacing: 6px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="verification-container">
+        <div class="header">
+            <div class="success-icon">✓</div>
+            <div class="logo">GuyGuy</div>
+            <div class="tagline">Connect with Trusted Artisans</div>
+        </div>
+        
+        <div class="content">
+            <h1 class="title">Verify Your Email Address 📧</h1>
+            
+            <p class="subtitle">
+                We've sent a verification code to your email address. 
+                Please enter the 6-digit code below to complete your registration.
+            </p>
+            
+            <form class="verification-form" id="verificationForm">
+                <div class="input-group">
+                    <label class="input-label" for="otpCode">Verification Code</label>
+                    <input 
+                        type="text" 
+                        id="otpCode" 
+                        class="otp-input" 
+                        placeholder="000000"
+                        maxlength="6"
+                        pattern="[0-9]{6}"
+                        required
+                        autocomplete="one-time-code"
+                    >
+                </div>
+                
+                <button type="submit" class="btn">
+                    Verify Email Address
+                </button>
+            </form>
+            
+            <div class="timer" id="timer">
+                <svg class="timer-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3l3 3m-9-6h6m-6 6h6m2 5H7a2 2 0 01-2 2v6a2 2 0 002 2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707L19.586 16H21a2 2 0 002-2v-6a2 2 0 00-2-2h-5.586a1 1 0 01-.707-.293l-5.414-5.414A1 1 0 01.293-.707L4.414 8H2a2 2 0 00-2 2v6z"/>
+                </svg>
+                Code expires in: <span id="countdown">15:00</span>
+            </div>
+            
+            <div class="alternative-action">
+                <a href="#" class="alternative-link">Didn't receive the code? Resend email</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="help-text">
+                Having trouble? Check your spam folder or ensure the email address is correct.
+            </div>
+            
+            <div class="support-info">
+                Need help? Contact us at <strong>support@guyguy.com.gh</strong>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Countdown timer
+        let timeLeft = 15 * 60; // 15 minutes in seconds
+        
+        function updateTimer() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            
+            const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('countdown').textContent = display;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('countdown').textContent = 'Expired';
+                document.getElementById('countdown').style.color = '#dc2626';
+                document.querySelector('.btn').disabled = true;
+                document.querySelector('.btn').style.opacity = '0.5';
+            }
+            
+            timeLeft--;
+        }
+        
+        const timerInterval = setInterval(updateTimer, 1000);
+        updateTimer(); // Initial call
+        
+        // Form submission
+        document.getElementById('verificationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const otpCode = document.getElementById('otpCode').value;
+            
+            if (otpCode.length === 6) {
+                // Show loading state
+                const btn = document.querySelector('.btn');
+                const originalText = btn.textContent;
+                btn.textContent = 'Verifying...';
+                btn.disabled = true;
+                
+                // Simulate verification (in production, this would call your API)
+                setTimeout(() => {
+                    // Redirect to success page or dashboard
+                    window.location.href = '/verification-success';
+                }, 2000);
+            }
+        });
+        
+        // Auto-focus and select all on input click
+        document.getElementById('otpCode').addEventListener('click', function() {
+            this.select();
+        });
+        
+        // Only allow numbers
+        document.getElementById('otpCode').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    </script>
+</body>
+</html>

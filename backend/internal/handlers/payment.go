@@ -36,9 +36,8 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 	}
 
 	var req struct {
-		BookingID string `json:"booking_id" binding:"required"`
-		Amount    int    `json:"amount" binding:"required"`
-		Email     string `json:"email" binding:"required"`
+		BookingID string  `json:"booking_id" binding:"required"`
+		Amount    float64 `json:"amount" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -60,20 +59,20 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 	}
 
 	// Calculate commission (10%) and artisan payout (90%)
-	commission := (req.Amount * 10) / 100
-	artisanPayout := req.Amount - commission
+	commissionAmount := req.Amount * 0.10
+	artisanPayoutAmount := req.Amount - commissionAmount
 
 	payment := &models.Payment{
-		ID:            uuid.New().String(),
-		BookingID:     req.BookingID,
-		Amount:        req.Amount,
-		Commission:    commission,
-		ArtisanPayout: artisanPayout,
-		Status:        "pending",
-		PayoutStatus:  "pending",
-		PaystackRef:   "",
-		CustomerEmail: req.Email,
-		ClientID:      userID.(string),
+		BookingID:             req.BookingID,
+		PayerID:               userID.(string),
+		PaystackReference:     uuid.New().String(),
+		Amount:                req.Amount,
+		CommissionBasisAmount: req.Amount,
+		CommissionAmount:      commissionAmount,
+		ArtisanPayoutAmount:   artisanPayoutAmount,
+		Currency:              "GHS",
+		Status:                "pending",
+		PayoutStatus:          "pending",
 	}
 
 	err = h.paymentRepo.Create(ctx, payment)
@@ -85,11 +84,11 @@ func (h *PaymentHandler) InitiatePayment(c *gin.Context) {
 
 	// In production, integrate with Paystack to get checkout URL
 	response.Created(c, gin.H{
-		"payment_id":     payment.ID,
-		"amount":         payment.Amount,
-		"commission":     payment.Commission,
-		"artisan_payout": payment.ArtisanPayout,
-		"status":         payment.Status,
+		"payment_id":            payment.ID,
+		"amount":                payment.Amount,
+		"commission_amount":     payment.CommissionAmount,
+		"artisan_payout_amount": payment.ArtisanPayoutAmount,
+		"status":                payment.Status,
 		// "checkout_url": "https://checkout.paystack.com/..." (add Paystack integration)
 	})
 }

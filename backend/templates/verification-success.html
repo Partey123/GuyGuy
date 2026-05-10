@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verified - GuyGuy</title>
+    <link rel="stylesheet" href="./design-system.css">
+    <style>
+        body {
+            font-family: var(--font-sans);
+            line-height: var(--leading-normal);
+            color: var(--gray-700);
+            background: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-5);
+        }
+        
+        .success-container {
+            background: var(--background);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-xl);
+            max-width: 520px;
+            width: 100%;
+            overflow: hidden;
+            animation: bounce var(--duration-normal) var(--ease-in-out);
+        }
+        
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+            70% {
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 60px 40px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="stars" width="50" height="50" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.3)"/></pattern></defs><rect width="100" height="100" fill="url(%23stars)"/></svg>');
+            opacity: 0.5;
+        }
+        
+        .success-icon {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-full);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-5);
+            font-size: var(--text-5xl);
+            animation: bounce var(--duration-normal) var(--ease-in-out);
+        }
+        
+        .logo {
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-3);
+            letter-spacing: -0.05em;
+        }
+        
+        .tagline {
+            font-size: var(--text-base);
+            opacity: 0.9;
+            font-weight: var(--font-medium);
+        }
+        
+        .content {
+            padding: var(--space-10) var(--space-8);
+            text-align: center;
+        }
+        
+        .success-title {
+            font-size: var(--text-3xl);
+            font-weight: var(--font-bold);
+            color: var(--success-600);
+            margin-bottom: var(--space-5);
+        }
+        
+        .success-message {
+            font-size: var(--text-lg);
+            color: var(--gray-600);
+            margin-bottom: var(--space-10);
+            line-height: var(--leading-relaxed);
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-5);
+            margin: var(--space-10) 0;
+        }
+        
+        .feature-card {
+            background: var(--background-secondary);
+            border: 1px solid var(--gray-100);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-6);
+            text-align: center;
+            transition: all var(--duration-normal) var(--ease-in-out);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--success-500);
+        }
+        
+        .feature-icon {
+            font-size: var(--text-3xl);
+            margin-bottom: var(--space-3);
+        }
+        
+        .feature-title {
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
+            color: var(--primary-700);
+            margin-bottom: var(--space-2);
+        }
+        
+        .feature-desc {
+            font-size: var(--text-sm);
+            color: var(--gray-600);
+        }
+        
+        .action-section {
+            margin-top: var(--space-10);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--success-500), var(--success-600));
+            color: white;
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-2xl);
+            border: none;
+            font-size: var(--text-lg);
+            font-weight: var(--font-medium);
+            cursor: pointer;
+            transition: all var(--duration-normal) var(--ease-in-out);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .btn-secondary {
+            background: var(--background);
+            color: var(--success-600);
+            padding: var(--space-3) var(--space-6);
+            border: 2px solid var(--success-500);
+            border-radius: var(--radius-2xl);
+            font-size: var(--text-base);
+            font-weight: var(--font-medium);
+            cursor: pointer;
+            transition: all var(--duration-normal) var(--ease-in-out);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--gray-50);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .footer {
+            background: var(--gray-50);
+            padding: var(--space-8);
+            text-align: center;
+            border-top: 1px solid var(--gray-100);
+        }
+        
+        .next-steps {
+            font-size: var(--text-base);
+            color: var(--gray-600);
+            margin-bottom: var(--space-5);
+        }
+        
+        .steps-list {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-5);
+            flex-wrap: wrap;
+        }
+        
+        .step {
+            background: var(--background);
+            border: 2px solid var(--gray-100);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-3) var(--space-4);
+            font-size: var(--text-sm);
+            font-weight: var(--font-semibold);
+            color: var(--success-600);
+        }
+        
+        @media (max-width: 640px) {
+            .success-container {
+                margin: var(--space-3);
+                border-radius: var(--radius-2xl);
+            }
+            
+            .header, .content, .footer {
+                padding: var(--space-8) var(--space-6);
+            }
+            
+            .success-title {
+                font-size: var(--text-2xl);
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-primary, .btn-secondary {
+                width: 100%;
+                margin: var(--space-3) 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="header">
+            <div class="success-icon">✓</div>
+            <div class="logo">GuyGuy</div>
+            <div class="tagline">Connect with Trusted Artisans</div>
+        </div>
+        
+        <div class="content">
+            <h1 class="success-title">Email Verified Successfully! 🎉</h1>
+            
+            <p class="success-message">
+                Your email address has been confirmed and your account is now active. 
+                You're all set to start connecting with skilled artisans or finding clients for your services.
+            </p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <div class="feature-title">Browse Artisans</div>
+                    <div class="feature-desc">Find skilled professionals for your needs</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💼</div>
+                    <div class="feature-title">Post Jobs</div>
+                    <div class="feature-desc">Get quotes from qualified artisans</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <div class="feature-title">Chat & Connect</div>
+                    <div class="feature-desc">Communicate directly with artisans</div>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⭐</div>
+                    <div class="feature-title">Reviews & Ratings</div>
+                    <div class="feature-desc">Share your experience with others</div>
+                </div>
+            </div>
+            
+            <div class="action-section">
+                <div class="next-steps">What's next?</div>
+                <div class="steps-list">
+                    <div class="step">1. Complete your profile</div>
+                    <div class="step">2. Browse artisans or post jobs</div>
+                    <div class="step">3. Book services</div>
+                </div>
+                
+                <a href="/login" class="btn-primary">Go to Dashboard</a>
+                <a href="/explore" class="btn-secondary">Explore Platform</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div style="margin-bottom: 20px;">
+                <strong>Ready to get started?</strong><br>
+                Login to your account and begin your GuyGuy journey today!
+            </div>
+            
+            <div style="font-size: 14px; color: #6b7280;">
+                Questions? Contact us at <strong>support@guyguy.com.gh</strong>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-redirect after 5 seconds
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 5000);
+        
+        // Add some celebration animations
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.success-container');
+            container.style.animation = 'bounceIn 0.8s ease-out';
+        });
+    </script>
+</body>
+</html>

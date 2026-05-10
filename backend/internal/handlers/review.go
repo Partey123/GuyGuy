@@ -84,13 +84,18 @@ func (h *ReviewHandler) Create(c *gin.Context) {
 		return
 	}
 
+	var commentPtr *string
+	if req.Comment != "" {
+		commentPtr = &req.Comment
+	}
+
 	review := &models.Review{
 		ID:        uuid.New().String(),
 		BookingID: req.BookingID,
 		ClientID:  userID.(string),
 		ArtisanID: booking.ArtisanID,
 		Rating:    req.Rating,
-		Comment:   req.Comment,
+		Comment:   commentPtr,
 	}
 
 	err = h.reviewRepo.Create(ctx, review)

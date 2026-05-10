@@ -3,13 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"guyguy/backend/internal/db"
 	"guyguy/backend/internal/models"
 	"guyguy/backend/pkg/response"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -37,13 +37,15 @@ func (h *BookingHandler) Create(c *gin.Context) {
 	}
 
 	var req struct {
-		ArtisanID   string `json:"artisan_id" binding:"required"`
-		ServiceType string `json:"service_type" binding:"required"`
-		Description string `json:"description" binding:"required"`
-		Location    string `json:"location" binding:"required"`
-		BudgetMin   int    `json:"budget_min" binding:"required"`
-		BudgetMax   int    `json:"budget_max" binding:"required"`
-		ScheduledAt string `json:"scheduled_at" binding:"required"`
+		ArtisanID       string  `json:"artisan_id" binding:"required"`
+		Title           string  `json:"title" binding:"required"`
+		Description     string  `json:"description" binding:"required"`
+		JobType         string  `json:"job_type"`
+		LabourAmount    float64 `json:"labour_amount" binding:"required"`
+		MaterialsAmount float64 `json:"materials_amount"`
+		LocationAddress *string `json:"location_address" binding:"required"`
+		ScheduledDate   string  `json:"scheduled_date"`
+		ScheduledTime   string  `json:"scheduled_time"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -51,19 +53,27 @@ func (h *BookingHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// Parse scheduled date if provided
+	var scheduledDate *time.Time
+	if req.ScheduledDate != "" {
+		if parsedDate, err := time.Parse("2006-01-02", req.ScheduledDate); err == nil {
+			scheduledDate = &parsedDate
+		}
+	}
+
 	booking := &models.Booking{
-		ID:            uuid.New().String(),
-		ClientID:      userID.(string),
-		ArtisanID:     req.ArtisanID,
-		ServiceType:   req.ServiceType,
-		Description:   req.Description,
-		Location:      req.Location,
-		BudgetMin:     req.BudgetMin,
-		BudgetMax:     req.BudgetMax,
-		ScheduledAt:   req.ScheduledAt,
-		Status:        "pending",
-		ClientRating:  nil,
-		ArtisanRating: nil,
+		ClientID:        userID.(string),
+		ArtisanID:       req.ArtisanID,
+		Title:           req.Title,
+		Description:     req.Description,
+		JobType:         req.JobType,
+		LabourAmount:    req.LabourAmount,
+		MaterialsAmount: req.MaterialsAmount,
+		TotalAmount:     req.LabourAmount + req.MaterialsAmount,
+		LocationAddress: req.LocationAddress,
+		ScheduledDate:   scheduledDate,
+		ScheduledTime:   &req.ScheduledTime,
+		Status:          "pending",
 	}
 
 	ctx := context.Background()
@@ -80,7 +90,11 @@ func (h *BookingHandler) Create(c *gin.Context) {
 // GetByID retrieves a booking
 func (h *BookingHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
-	userID, _ := c.Get("user_id")
+	userID, exists := c.Get("user_id")
+	if !exists {
+		response.Unauthorized(c, "user not authenticated")
+		return
+	}
 
 	ctx := context.Background()
 	booking, err := h.bookingRepo.GetByID(ctx, id)
@@ -96,7 +110,7 @@ func (h *BookingHandler) GetByID(c *gin.Context) {
 	}
 
 	// Check authorization - only client and artisan can view
-	if booking.ClientID != userID && booking.ArtisanID != userID {
+	if booking.ClientID != userID.(string) && booking.ArtisanID != userID.(string) {
 		response.Forbidden(c, "you cannot access this booking")
 		return
 	}
@@ -104,7 +118,7 @@ func (h *BookingHandler) GetByID(c *gin.Context) {
 	response.OK(c, booking)
 }
 
-// ListByStatus retrieves bookings by status
+// ListByStatus retrieves bookings by status for the authenticated user
 func (h *BookingHandler) ListByStatus(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -124,11 +138,35 @@ func (h *BookingHandler) ListByStatus(c *gin.Context) {
 	}
 
 	ctx := context.Background()
-	bookings, err := h.bookingRepo.ListByStatus(ctx, status, limit, offset)
+	// Get user's role to determine which bookings to fetch
+	userRole, _ := c.Get("role")
+
+	var bookings []*models.Booking
+	var err error
+
+	// If user is an artisan, get their bookings; if client, get their bookings
+	if userRole == "artisan" {
+		bookings, err = h.bookingRepo.ListByArtisanID(ctx, userID.(string), limit, offset)
+	} else {
+		// Default to client bookings
+		bookings, err = h.bookingRepo.ListByClientID(ctx, userID.(string), limit, offset)
+	}
+
 	if err != nil {
 		h.log.Error("failed to list bookings", zap.Error(err))
 		response.ServerError(c, "failed to fetch bookings")
 		return
+	}
+
+	// Filter by status if specified
+	if status != "all" {
+		var filteredBookings []*models.Booking
+		for _, booking := range bookings {
+			if booking.Status == status {
+				filteredBookings = append(filteredBookings, booking)
+			}
+		}
+		bookings = filteredBookings
 	}
 
 	response.OK(c, gin.H{

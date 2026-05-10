@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"gorm.io/gorm"
 	"guyguy/backend/internal/models"
+
+	"gorm.io/gorm"
 )
 
 // UserRepo handles user database operations
@@ -65,3 +66,4 @@ func (r *UserRepo) List(ctx context.Context, limit, offset int) ([]*models.User,
 		Offset(offset).
 		Find(&users).Error
 	return users, err
+}
