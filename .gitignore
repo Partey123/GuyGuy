@@ -105,7 +105,7 @@ dist
 
 # Gatsby files
 .cache/
-public
+# NOTE: do not ignore `public/` globally (we commit `frontend/public/` per Tech Bible)
 
 # Vuepress build output
 .vuepress/dist
@@ -159,6 +159,10 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+
+# Go / backend build artifacts
+backend/tmp/
+backend/*.exe
 
 # Firebase
 .firebase/

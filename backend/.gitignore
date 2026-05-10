@@ -1,0 +1,19 @@
+## Local env (never commit)
+.env
+.env.*
+!.env.example
+
+## Build artifacts / temp
+tmp/
+*.exe
+*.out
+*.test
+
+## Logs
+*.log
+
+## Sensitive credentials (commonly used with Firebase/admin SDKs, etc.)
+*service-account*.json
+*firebase*.json
+*credentials*.json
+
