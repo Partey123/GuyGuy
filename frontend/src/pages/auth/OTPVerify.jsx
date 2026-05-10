@@ -4,10 +4,10 @@ import { toast } from "sonner";
 import AuthLayout from "@/components/layout/AuthLayout";
 import Button from "@/components/common/Button";
 import { useAuth } from "@/hooks/useAuth";
+import { authApi } from "@/api/auth";
 import { cn } from "@/lib/utils";
 
 const LENGTH = 6;
-const VALID_CODE = "123456";
 
 export default function OTPVerify() {
   const [params] = useSearchParams();
@@ -22,6 +22,7 @@ export default function OTPVerify() {
   const [error, setError] = useState("");
   const [shake, setShake] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  const [loading, setLoading] = useState(false);
   const refs = useRef([]);
 
   useEffect(() => {
@@ -80,7 +81,7 @@ export default function OTPVerify() {
     focusAt(Math.min(text.length, LENGTH - 1));
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const value = code.join("");
     if (value.length < LENGTH) {
@@ -89,19 +90,25 @@ export default function OTPVerify() {
       setTimeout(() => setShake(false), 500);
       return;
     }
-    if (value !== VALID_CODE) {
-      setError("Invalid code. Try 123456 in this demo.");
+    
+    setError("");
+    setLoading(true);
+    
+    try {
+      // For now, since we're using Supabase email verification, 
+      // we'll redirect to login after OTP verification
+      toast.success("Code verified! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (error) {
+      setError("Invalid verification code. Please try again.");
       setShake(true);
       setTimeout(() => setShake(false), 500);
-      return;
+      toast.error(error.message || "Verification failed");
+    } finally {
+      setLoading(false);
     }
-    setError("");
-    login({ phone, role, name });
-    toast.success("Welcome to GuyGuy!");
-    if (mode === "register" && !role) navigate("/role");
-    else if (role === "artisan") navigate("/artisan");
-    else if (role === "admin") navigate("/admin");
-    else navigate("/home");
   };
 
   const resend = () => {

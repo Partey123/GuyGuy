@@ -13,4 +13,32 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    let errorMsg = "Unknown error";
+    
+    if (error.response) {
+      const { status, data } = error.response;
+      
+      if (typeof data === 'object' && data !== null) {
+        errorMsg = data.error || data.message || JSON.stringify(data);
+      } else if (typeof data === 'string') {
+        errorMsg = data;
+      }
+      
+      console.error(`[API ${status}] ${errorMsg}`, data);
+    } else if (error.request) {
+      errorMsg = "No response from server";
+      console.error("[API] No response:", error.request);
+    } else {
+      errorMsg = error.message;
+      console.error("[API] Request error:", error.message);
+    }
+    
+    error.message = errorMsg;
+    return Promise.reject(error);
+  }
+);
+
 export default api;

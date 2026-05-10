@@ -95,21 +95,23 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 
 	result, err := h.supabaseClient.GetSupabaseClient().Auth.Signup(signupRequest)
 	if err != nil {
-		h.log.Error("failed to signup user",
-			zap.String("email", req.Email),
-			zap.Error(err))
-
 		errMsg := err.Error()
+		h.log.Error("signup failed",
+			zap.String("email", req.Email),
+			zap.String("error", errMsg))
+
 		if strings.Contains(errMsg, "response status code 4") {
 			parts := strings.SplitN(errMsg, ": ", 2)
 			if len(parts) == 2 {
 				errMsg = strings.TrimSpace(parts[1])
 			}
+			h.log.Info("signup validation error", zap.String("details", errMsg))
 			response.BadRequest(c, errMsg)
 			return
 		}
 
-		response.ServerError(c, "failed to create account")
+		h.log.Error("signup error from Supabase", zap.String("raw_error", errMsg))
+		response.ServerError(c, errMsg)
 		return
 	}
 

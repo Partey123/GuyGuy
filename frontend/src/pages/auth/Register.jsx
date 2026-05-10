@@ -10,6 +10,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [params] = useSearchParams();
@@ -23,13 +24,14 @@ export default function Register() {
     if (!name.trim()) next.name = "Your name is required";
     if (!/^\S+@\S+\.\S+$/.test(email)) next.email = "Enter a valid email";
     if (password.length < 6) next.password = "Password must be at least 6 characters";
+    if (!/^\+?[\d\s\-]{10,}$/.test(phone)) next.phone = "Enter a valid phone number";
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setLoading(true);
     const tid = toast.loading("Creating your account…");
     try {
-      await signup({ full_name: name, email, password, role });
+      await signup({ full_name: name, email, password, role, phone });
       toast.success("Account created. Check your email for verification.", { id: tid });
       navigate("/login");
     } catch (error) {
@@ -74,6 +76,14 @@ export default function Register() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password}
+        />
+        <Input
+          label="Phone"
+          type="tel"
+          placeholder="+233 20 000 0000"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          error={errors.phone}
         />
         <Button type="submit" loading={loading} className="w-full active:scale-95 transition-transform">
           Create account

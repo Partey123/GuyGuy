@@ -105,7 +105,7 @@ const EmailVerify = () => {
             onClick={async () => {
               try {
                 setIsLoading(true);
-                const response = await api.post('/auth/verify-email', { token });
+                const response = await authApi.verifyEmail({ token });
                 if (response.success) {
                   setIsVerified(true);
                   toast.success('Email verified successfully!');
